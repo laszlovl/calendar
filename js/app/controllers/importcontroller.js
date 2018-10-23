@@ -26,8 +26,8 @@
  * Description: Takes care of importing calendars
  */
 
-app.controller('ImportController', ['$scope', '$filter', 'CalendarService', 'VEventService', '$uibModalInstance', 'files', 'ImportFileWrapper', 'ColorUtility',
-	function($scope, $filter, CalendarService, VEventService, $uibModalInstance, files, ImportFileWrapper, ColorUtility) {
+app.controller('ImportController', ['$scope', '$filter', '$timeout', 'CalendarService', 'VEventService', '$uibModalInstance', 'files', 'ImportFileWrapper', 'ColorUtility',
+	function($scope, $filter, $timeout, CalendarService, VEventService, $uibModalInstance, files, ImportFileWrapper, ColorUtility) {
 		'use strict';
 
 		$scope.nameSize = 25;
@@ -45,32 +45,37 @@ app.controller('ImportController', ['$scope', '$filter', 'CalendarService', 'VEv
 
 			var importCalendar = function(calendar) {
 				const objects = fileWrapper.splittedICal.objects;
+				var promise = $timeout();
 
 				angular.forEach(objects, function(object) {
-					VEventService.create(calendar, object, false).then(function(response) {
-						fileWrapper.state = ImportFileWrapper.stateImporting;
-						fileWrapper.progress++;
+				    promise = promise.then(function() {
+					    VEventService.create(calendar, object, false).then(function(response) {
+						    fileWrapper.state = ImportFileWrapper.stateImporting;
+						    fileWrapper.progress++;
 
-						if (!response) {
-							fileWrapper.errors++;
-						}
-					}).catch(function(reason) {
-						if (reason.status === 400) {
-							const xml = reason.xhr.responseXML;
-							const error = xml.children[0];
+						    if (!response) {
+							    fileWrapper.errors++;
+						    }
+					    }).catch(function(reason) {
+						    if (reason.status === 400) {
+							    const xml = reason.xhr.responseXML;
+							    const error = xml.children[0];
 
-							if (error) {
-								const message = error.children[1].textContent;
-								if (message === 'Calendar object with uid already exists in this calendar collection.') {
-									fileWrapper.duplicates++;
-								}
-							}
-						}
+							    if (error) {
+								    const message = error.children[1].textContent;
+								    if (message === 'Calendar object with uid already exists in this calendar collection.') {
+									    fileWrapper.duplicates++;
+								    }
+							    }
+						    }
 
-						fileWrapper.state = ImportFileWrapper.stateImporting;
-						fileWrapper.errors++;
-						fileWrapper.progress++;
-					});
+						    fileWrapper.state = ImportFileWrapper.stateImporting;
+						    fileWrapper.errors++;
+						    fileWrapper.progress++;
+					    });
+
+					    return $timeout(100);
+				    });
 				});
 			};
 
